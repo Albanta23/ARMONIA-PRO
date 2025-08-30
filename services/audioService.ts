@@ -43,8 +43,9 @@ const midiToFrequency = (midi: number): number => {
 
 /**
  * Analiza un cifrado de acorde y devuelve un array de números de nota MIDI.
- * Es una versión simplificada que cubre los acordes más comunes.
- * @param chordName - El cifrado del acorde (ej. "Am7", "G7", "Cmaj7").
+ * Cubre acordes comunes, extensiones (9, 11, 13), alteraciones (b9, #11),
+ * acordes suspendidos (sus4, sus2) y disminuidos.
+ * @param chordName - El cifrado del acorde (ej. "Am7", "G7(b9)", "C#m7b5").
  * @returns Un array de números MIDI para las notas del acorde.
  */
 const parseChordToMidi = (chordName: string): number[] => {
@@ -58,27 +59,83 @@ const parseChordToMidi = (chordName: string): number[] => {
   const baseMidiNote = NOTE_TO_MIDI[rootName] + 60; // Octava central (C4)
   
   let remaining = cleanChordName.substring(rootName.length);
-  // Elimina paréntesis y su contenido (b9, #11, etc.) por simplicidad
-  remaining = remaining.replace(/\(.*\)/, '');
+  
+  // Almacenamos los intervalos relativos a la tónica en semitonos
+  const intervals = new Set<number>([0]); // La tónica siempre está presente
 
-  let intervals: number[];
-
-  // Se evalúan las calidades más complejas primero
-  if (remaining.startsWith('maj7') || remaining.startsWith('M7')) {
-    intervals = [0, 4, 7, 11]; // M, 3M, 5J, 7M
-  } else if (remaining.startsWith('m7') || remaining.startsWith('-7')) {
-    intervals = [0, 3, 7, 10]; // m, 3m, 5J, 7m
-  } else if (remaining.startsWith('7')) {
-    intervals = [0, 4, 7, 10]; // M, 3M, 5J, 7m (Dominante)
-  } else if (remaining.startsWith('m')) {
-    intervals = [0, 3, 7]; // m, 3m, 5J
-  } else {
-    // Por defecto, es un acorde mayor
-    intervals = [0, 4, 7]; // M, 3M, 5J
+  // --- 1. Extraer Alteraciones entre paréntesis ---
+  const alterations = new Set<string>();
+  remaining = remaining.replace(/\((.*?)\)/g, (_, group) => {
+      // Busca alteraciones como b9, #11, +5, etc.
+      group.match(/[#b]?\d+/g)?.forEach((alt: string) => alterations.add(alt));
+      return ''; // Elimina el paréntesis del string principal para el análisis de cualidad
+  });
+  
+  // --- 2. Determinar la cualidad del Acorde (tríada y séptima) ---
+  // El orden de chequeo es importante, de más específico a más general para evitar falsos positivos.
+  
+  // Acordes de 13ava
+  if (remaining.startsWith('maj13') || remaining.startsWith('M13')) {
+    intervals.add(4).add(7).add(11).add(14).add(21);
+  } else if (remaining.startsWith('m13')) {
+    intervals.add(3).add(7).add(10).add(14).add(21);
+  } else if (remaining.startsWith('13')) {
+    intervals.add(4).add(7).add(10).add(14).add(21);
   }
+  // Acordes de 11ava
+  else if (remaining.startsWith('m11')) {
+    intervals.add(3).add(7).add(10).add(17);
+  }
+  // Acordes de 9na
+  else if (remaining.startsWith('maj9') || remaining.startsWith('M9')) {
+    intervals.add(4).add(7).add(11).add(14);
+  } else if (remaining.startsWith('m9')) {
+    intervals.add(3).add(7).add(10).add(14);
+  } else if (remaining.startsWith('9')) {
+    intervals.add(4).add(7).add(10).add(14);
+  }
+  // Acordes de 7ma
+  else if (remaining.startsWith('m7b5') || remaining.startsWith('ø')) { // Semidisminuido
+      intervals.add(3).add(6).add(10);
+  } else if (remaining.startsWith('maj7') || remaining.startsWith('M7') || remaining.startsWith('Δ')) {
+      intervals.add(4).add(7).add(11);
+  } else if (remaining.startsWith('m7')) {
+      intervals.add(3).add(7).add(10);
+  } else if (remaining.startsWith('7sus4')) {
+      intervals.add(5).add(7).add(10);
+  } else if (remaining.startsWith('dim7') || remaining.startsWith('°7')) { // Disminuido
+      intervals.add(3).add(6).add(9);
+  } else if (remaining.startsWith('7')) { // Dominante
+      intervals.add(4).add(7).add(10);
+  }
+  // Tríadas
+  else if (remaining.startsWith('dim') || remaining.startsWith('°')) {
+      intervals.add(3).add(6);
+  } else if (remaining.startsWith('m')) { // Menor
+      intervals.add(3).add(7);
+  } else if (remaining.startsWith('sus4')) {
+      intervals.add(5).add(7);
+  } else if (remaining.startsWith('sus2')) {
+      intervals.add(2).add(7);
+  } else { // Mayor por defecto
+      intervals.add(4).add(7);
+  }
+  
+  // --- 3. Aplicar Alteraciones ---
+  // Esto permite anular o añadir notas a la cualidad base.
+  alterations.forEach(alt => {
+      if (alt === 'b5') { intervals.delete(7); intervals.add(6); }
+      if (alt === '#5' || alt === '+5') { intervals.delete(7); intervals.add(8); }
+      if (alt === 'b9') { intervals.delete(14); intervals.add(13); }
+      if (alt === '#9') { intervals.delete(14); intervals.add(15); }
+      if (alt === '#11') { intervals.delete(17); intervals.add(18); }
+      if (alt === 'b13') { intervals.delete(21); intervals.add(20); }
+  });
 
-  return intervals.map(interval => baseMidiNote + interval);
+  const sortedIntervals = Array.from(intervals).sort((a, b) => a - b);
+  return sortedIntervals.map(interval => baseMidiNote + interval);
 };
+
 
 const playNotes = (notes: number[], duration: number, startTime: number) => {
     const context = getAudioContext();
