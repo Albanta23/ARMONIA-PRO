@@ -1,7 +1,15 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeneratedAnalysis, GenerationParams, RepertoireAnalysisResult } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+// FIX: Per coding guidelines, the API key must be retrieved from `process.env.API_KEY`.
+// This change also fixes the TypeScript error `Property 'env' does not exist on type 'ImportMeta'`.
+const apiKey = process.env.API_KEY;
+
+if (!apiKey) {
+  throw new Error("API_KEY environment variable not set.");
+}
+
+const ai = new GoogleGenAI({ apiKey });
 
 const progressionSchema = {
   type: Type.OBJECT,
