@@ -1,8 +1,8 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeneratedAnalysis, GenerationParams, RepertoireAnalysisResult } from '../types';
 
-// FIX: Switched from import.meta.env.VITE_API_KEY to process.env.API_KEY to adhere to the Gemini API coding guidelines.
-const apiKey = process.env.API_KEY;
+// FIX: Usar import.meta.env.VITE_API_KEY para compatibilidad con Vite/React.
+const apiKey = import.meta.env.VITE_API_KEY;
 
 if (!apiKey) {
   // FIX: Updated error message to reflect the new environment variable.
