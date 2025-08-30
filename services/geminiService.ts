@@ -1,17 +1,16 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeneratedAnalysis, GenerationParams, RepertoireAnalysisResult } from '../types';
 
-// FIX: Aligned API key handling with @google/genai SDK guidelines.
-// The API key is now sourced exclusively from process.env.API_KEY and must be set
-// in the deployment environment (e.g., Coolify).
-if (!process.env.API_KEY) {
-  // Provide a more user-friendly error in the browser console.
-  console.error("API_KEY is not set. Please set it in your deployment environment variables (e.g., in Coolify).");
-  // Throwing an error here prevents the app from making failed API calls.
+// FIX: Switched from import.meta.env.VITE_API_KEY to process.env.API_KEY to adhere to the Gemini API coding guidelines.
+const apiKey = process.env.API_KEY;
+
+if (!apiKey) {
+  // FIX: Updated error message to reflect the new environment variable.
+  console.error("API_KEY environment variable is not set. Please set it in your deployment environment variables.");
   throw new Error("API key configuration error. Check the console for details.");
 }
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey });
 
 const progressionSchema = {
   type: Type.OBJECT,

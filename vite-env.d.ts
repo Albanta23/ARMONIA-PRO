@@ -1,8 +1,12 @@
-// FIX: Removed reference to 'vite/client' which was causing a type resolution error.
-// Switched to declaring process.env.API_KEY to align with @google/genai guidelines,
-// which resolves the TypeScript errors.
-declare namespace NodeJS {
-  interface ProcessEnv {
-    readonly API_KEY: string;
+/// <reference types="vite/client" />
+
+// FIX: Add explicit type definitions for process.env to resolve TypeScript errors.
+// This ensures that TypeScript recognizes the `process.env.API_KEY` property
+// as required by the @google/genai SDK guidelines. This change fixes the original
+// error related to environment variables and the error about vite/client types
+// not being found by providing necessary type information directly.
+declare var process: {
+  env: {
+    API_KEY: string;
   }
-}
+};
