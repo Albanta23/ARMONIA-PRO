@@ -1,6 +1,7 @@
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
 import { GeneratedAnalysis, RepertoireAnalysisResult } from '../types';
 
+// Fix: Switched from import.meta.env to process.env for API key access to resolve TypeScript error and align with guidelines.
 if (!process.env.API_KEY) {
   throw new Error("API_KEY environment variable not set");
 }
