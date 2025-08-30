@@ -1,266 +1,175 @@
-import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { GeneratedAnalysis, RepertoireAnalysisResult } from '../types';
+import { GoogleGenAI, Type } from "@google/genai";
+import { GeneratedAnalysis, GenerationParams, RepertoireAnalysisResult } from '../types';
 
-// Fix: Switched from import.meta.env to process.env for API key access to resolve TypeScript error and align with guidelines.
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
-const model = 'gemini-2.5-flash';
-
-const analysisSchema = {
-    type: Type.OBJECT,
-    properties: {
-        progression: {
-            type: Type.ARRAY,
-            description: "La progresión de acordes generada o analizada.",
-            items: {
-                type: Type.OBJECT,
-                properties: {
-                    name: {
-                        type: Type.STRING,
-                        description: "El cifrado americano completo del acorde (ej. G7(b9), F#m7(b5))."
-                    },
-                    function: {
-                        type: Type.STRING,
-                        description: "La función tonal del acorde (ej. 'Tónica', 'Dominante Secundaria (V/V)', 'Subdominante Menor')."
-                    }
-                }
-            }
-        },
-        analysis: {
+const progressionSchema = {
+  type: Type.OBJECT,
+  properties: {
+    progression: {
+      type: Type.ARRAY,
+      description: "La secuencia de acordes generada, en cifrado americano. Incluye acordes de séptima y posibles tensiones.",
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: {
             type: Type.STRING,
-            description: "Análisis armónico detallado de la progresión, explicando la función de cada acorde, las tensiones, resoluciones y el contexto estilístico. Escrito en español, como un profesor de conservatorio superior."
+            description: "El cifrado del acorde (ej. 'Am7', 'G7(b9)', 'C#m7b5')."
+          },
+          function: {
+            type: Type.STRING,
+            description: "La función armónica del acorde en la tonalidad (ej. 'Tónica (i)', 'Dominante Secundaria (V7/IV)', 'Subdominante menor (iv7)')."
+          }
         },
-        concepts: {
-            type: Type.ARRAY,
-            items: {
-                type: Type.STRING
-            },
-            description: "Lista de 3 a 5 conceptos armónicos clave presentes en la progresión (ej. 'Intercambio Modal', 'Dominante Secundaria', 'Acorde Napolitano', 'Modulación')."
+        required: ["name", "function"]
+      }
+    },
+    analysis: {
+      type: Type.STRING,
+      description: "Análisis armónico detallado de la progresión, explicando las relaciones entre acordes, la conducción de voces, las cadencias y el interés armónico. Escrito como un profesor de conservatorio."
+    },
+    concepts: {
+      type: Type.ARRAY,
+      description: "Una lista de 3 a 5 conceptos armónicos clave presentes en la progresión (ej. 'Cadencia Rota', 'Intercambio Modal', 'Dominantes Secundarias').",
+      items: { type: Type.STRING }
+    },
+    musicalExample: {
+      type: Type.OBJECT,
+      description: "Un ejemplo de una pieza musical conocida del repertorio que utilice una progresión o concepto armónico similar.",
+      properties: {
+        piece: {
+          type: Type.STRING,
+          description: "Título de la pieza y compositor (ej. 'Preludio en Mi menor, Op. 28 n.º 4 de Chopin')."
         },
-        musicalExample: {
-            type: Type.OBJECT,
-            description: "Un ejemplo de una pieza musical real donde se puede escuchar un concepto armónico similar.",
-            properties: {
-                piece: {
-                    type: Type.STRING,
-                    description: "El nombre de la pieza y compositor (ej. 'Sonata Patética de Beethoven, Op. 13')."
-                },
-                description: {
-                    type: Type.STRING,
-                    description: "Una breve descripción de dónde y cómo aparece el concepto en la pieza."
-                },
-                simplifiedProgression: {
-                    type: Type.STRING,
-                    description: "Una progresión de acordes corta y audible (2-4 acordes) que demuestre el concepto armónico del ejemplo. Ej: 'C | G7 | C'. Será opcional y solo si aplica."
-                }
-            }
+        description: {
+          type: Type.STRING,
+          description: "Breve descripción de cómo se utiliza el concepto armónico en esa pieza."
+        },
+        simplifiedProgression: {
+            type: Type.STRING,
+            description: "Una versión simplificada de la progresión del ejemplo, separada por '|' (ej. 'C | G | Am | F'), para poder reproducirla."
         }
+      },
+      required: ["piece", "description"]
     }
+  },
+  required: ["progression", "analysis", "concepts", "musicalExample"]
 };
 
-export const generateProgressionAnalysis = async (
-  key: string,
-  mode: string,
-  style: string,
-  complexity: string,
-  numChords: number,
-  meter: string,
-  tempo: number
-): Promise<GeneratedAnalysis> => {
+export const generateProgressionAnalysis = async (params: GenerationParams): Promise<GeneratedAnalysis> => {
+  const { key, mode, style, complexity, numChords } = params;
+  
+  const prompt = `
+    Eres un catedrático de armonía del Real Conservatorio Superior de Música.
+    Tu tarea es generar una progresión de acordes y su análisis correspondiente basado en los siguientes parámetros.
+    La respuesta DEBE estar en español.
+
+    Parámetros:
+    - Tonalidad: ${key} ${mode}
+    - Estilo Armónico: ${style}
+    - Nivel de Complejidad: ${complexity}
+    - Número de acordes: ${numChords || 'entre 4 y 8 acordes'}
+
+    Instrucciones:
+    1.  Crea una progresión de acordes que sea idiomática para el estilo y nivel de complejidad solicitados.
+    2.  Para cada acorde, proporciona su cifrado americano (ej. 'Cmaj7', 'G7(b9)') y su función armónica precisa.
+    3.  Escribe un análisis profundo y académico de la progresión. Explica las decisiones armónicas, las cadencias, el uso de cromatismo, las dominantes secundarias, el intercambio modal, o cualquier otro concepto relevante. La explicación debe ser clara, concisa y de alto nivel.
+    4.  Identifica los conceptos teóricos más importantes demostrados en la progresión.
+    5.  Proporciona un ejemplo relevante de una pieza del repertorio (clásico, jazz, etc.) que utilice un concepto o progresión similar.
+  `;
+  
   try {
-    const prompt = `
-      Eres un catedrático de armonía del Conservatorio Superior de Música más prestigioso del mundo.
-      Tu tarea es generar una progresión de acordes y un análisis detallado para un estudiante de música de nivel avanzado.
-
-      Parámetros:
-      - Tonalidad: ${key} ${mode}
-      - Estilo Armónico: ${style}
-      - Complejidad: ${complexity}
-      - Número de acordes: ${numChords}
-      - Métrica: ${meter}
-      - Tempo (BPM aproximado): ${tempo}
-
-      Instrucciones:
-      1. Crea una progresión de acordes interesante y educativa que se ajuste a los parámetros. Debe ser idiomática y reflejar las convenciones del estilo, pero también incluir elementos que provoquen el pensamiento crítico.
-      2. Considera la métrica y el tempo para sugerir un ritmo armónico y un carácter general para la progresión (ej. un cambio de acorde por compás en un 4/4 rápido, o varios acordes por compás en una balada lenta). Refleja esto en tu análisis.
-      3. Proporciona el cifrado americano completo para cada acorde y su función tonal específica.
-      4. Realiza un análisis armónico exhaustivo, explicando funciones, cadencias, tensiones, resoluciones y técnicas avanzadas (dominantes secundarias, sustitutos, intercambios modales, etc.).
-      5. Relaciona el análisis con el estilo musical, la métrica y el tempo solicitados.
-      6. Identifica los 3-5 conceptos teóricos más importantes.
-      7. Proporciona un ejemplo claro de una pieza del repertorio estándar. Adicionalmente, si es posible y relevante, proporciona en el campo 'simplifiedProgression' una secuencia corta (2-4 acordes, ej: 'Am | E7 | Am') que demuestre audiblemente el concepto.
-
-      Devuelve tu respuesta en el formato JSON especificado.
-    `;
-
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: analysisSchema,
-        temperature: 0.85,
-      }
+    const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: progressionSchema,
+        },
     });
 
-    const parsedResponse = JSON.parse(response.text);
-    return parsedResponse as GeneratedAnalysis;
-
+    const jsonText = response.text.trim();
+    const result = JSON.parse(jsonText);
+    
+    // Combine the static params with the generated result
+    return { params, ...result };
   } catch (error) {
-    console.error("Error generating progression analysis:", error);
-    throw new Error("Failed to get analysis from Gemini API.");
-  }
-};
-
-export const analyzeChordProgression = async (
-  progression: string,
-  key: string,
-  mode: string,
-  style: string,
-  meter: string,
-  tempo: number
-): Promise<GeneratedAnalysis> => {
-  try {
-    const prompt = `
-      Eres un catedrático de armonía del Conservatorio Superior de Música más prestigioso del mundo.
-      Tu tarea es analizar una progresión de acordes que te proporciono y ofrecer una explicación detallada para un estudiante de música de nivel avanzado.
-
-      Progresión a analizar: ${progression}
-
-      Contexto para el análisis:
-      - Tonalidad de referencia: ${key} ${mode}
-      - Estilo Armónico: ${style}
-      - Métrica: ${meter}
-      - Tempo (BPM aproximado): ${tempo}
-
-      Instrucciones:
-      1. Analiza la progresión de acordes proporcionada. Determina la función tonal de cada acorde dentro de la tonalidad de referencia.
-      2. Formatea la progresión en el JSON de salida, incluyendo el cifrado americano completo que se proporcionó y la función tonal que has determinado para cada acorde.
-      3. Realiza un análisis armónico exhaustivo, explicando funciones, cadencias, tensiones, resoluciones y técnicas avanzadas presentes en la progresión.
-      4. Relaciona tu análisis con el estilo musical, la métrica y el tempo de contexto.
-      5. Identifica los 3-5 conceptos teóricos más importantes demostrados en la progresión.
-      6. Proporciona un ejemplo claro de una pieza del repertorio estándar. Adicionalmente, si es posible y relevante, proporciona en el campo 'simplifiedProgression' una secuencia corta (2-4 acordes, ej: 'Fm | Bbm | C7 | Fm') que demuestre audiblemente el concepto.
-
-      Devuelve tu respuesta en el formato JSON especificado.
-    `;
-
-    const response: GenerateContentResponse = await ai.models.generateContent({
-      model,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: analysisSchema,
-        temperature: 0.7,
-      }
-    });
-
-    const parsedResponse = JSON.parse(response.text);
-    return parsedResponse as GeneratedAnalysis;
-
-  } catch (error) {
-    console.error("Error analyzing progression:", error);
-    throw new Error("Failed to get analysis from Gemini API.");
+    console.error("Error calling Gemini API:", error);
+    throw new Error("No se pudo generar el análisis. Inténtelo de nuevo.");
   }
 };
 
 
 export const getTheoryExplanation = async (topic: string): Promise<string> => {
+    const prompt = `
+    Eres un catedrático de teoría musical y armonía del Real Conservatorio Superior de Música.
+    Explica el siguiente concepto de forma clara, profunda y académica, como lo harías en una clase magistral.
+    La respuesta DEBE estar en español y formateada en Markdown.
+
+    Concepto: "${topic}"
+
+    Estructura de la explicación:
+    1.  **Definición Concisa:** Una explicación directa del concepto.
+    2.  **Contexto Histórico y Estilístico:** ¿En qué períodos o estilos es más común?
+    3.  **Funcionamiento Teórico:** Detalla cómo funciona, las reglas que sigue y por qué es efectivo.
+    4.  **Ejemplos Prácticos:** Proporciona uno o más ejemplos musicales breves. **REGLA OBLIGATORIA:** Cada ejemplo musical DEBE estar encapsulado en notación ABCJS dentro de un bloque \`[abc]...[/abc]\`. NO incluyas ejemplos musicales sin este formato. Por ejemplo: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"G7" [GBdf] | "C" [CEGc] |[/abc]\`.
+    5.  **Repertorio Clave:** Menciona una o dos piezas famosas donde este concepto sea prominente.
+    `;
+    
     try {
-        const prompt = `
-            Eres un catedrático de armonía del Conservatorio Superior de Música más prestigioso del mundo.
-            Explica el siguiente concepto armónico de forma clara, profunda y con ejemplos musicales.
-            El público son estudiantes de 4º y 5º de grado profesional, por lo que puedes usar terminología técnica, pero asegúrate de que sea comprensible y pedagógica.
-
-            Concepto a explicar: "${topic}"
-
-            Instrucciones MUY IMPORTANTES:
-            1.  Para TODOS los ejemplos musicales, debes proporcionar la notación en formato ABC notation, envuelta entre etiquetas [abc]...[/abc].
-            2.  La notación ABC debe ser simple, clara y legible. Usa una clave apropiada (ej. K:C para Do Mayor, K:Am para La menor), una métrica (ej. M:4/4) y no más de 2-4 compases por ejemplo.
-            3.  Ejemplo de cómo formatear un ejemplo:
-                "Un ejemplo en Do Mayor sería el siguiente:"
-                [abc]
-                X: 1
-                K: C
-                M: 4/4
-                L: 1/4
-                "G7" [G,B,df]4 | "C" [CEG]4 |
-                [/abc]
-                "Como se observa, la sensible (B) resuelve a la tónica (C)..."
-            
-            Estructura tu explicación usando Markdown para un formato claro:
-            - **Definición Concisa**: Un párrafo introductorio.
-            - **Contexto Histórico y Estilístico**: ¿Dónde y cuándo se usa más?
-            - **Funcionamiento Teórico**: Intervalos, resolución de tensiones, etc.
-            - **Ejemplos Prácticos**: En diferentes tonalidades (con su notación ABC).
-            - **Errores Comunes a Evitar**: Consejos prácticos.
-            - **Repertorio Clave**: Sugerencia de una pieza donde se pueda escuchar este concepto claramente.
-        `;
-
-        const response: GenerateContentResponse = await ai.models.generateContent({
-            model,
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
             contents: prompt,
-            config: {
-                temperature: 0.6
-            }
         });
-
         return response.text;
     } catch (error) {
-        console.error("Error generating theory explanation:", error);
-        throw new Error("Failed to get theory explanation from Gemini API.");
+        console.error("Error calling Gemini API for theory explanation:", error);
+        throw new Error("No se pudo obtener la explicación. Inténtelo de nuevo.");
     }
 };
 
 const repertoireSchema = {
     type: Type.OBJECT,
     properties: {
-        pieceTitle: { type: Type.STRING, description: "El título correcto y completo de la pieza." },
-        composer: { type: Type.STRING, description: "El compositor de la pieza." },
-        analysis: { type: Type.STRING, description: "Un análisis armónico detallado de la pieza, sección por sección. Usa Markdown para formatear (títulos, listas). Escrito en español." },
-        keyConcepts: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING },
-            description: "Una lista de los conceptos armónicos más importantes encontrados en la pieza."
+        pieceTitle: { type: Type.STRING, description: "El título completo y correcto de la obra, incluyendo opus si es relevante." },
+        composer: { type: Type.STRING, description: "El nombre completo del compositor." },
+        analysis: { type: Type.STRING, description: "Un análisis armónico detallado de la obra en formato Markdown. Debe cubrir la estructura, tonalidades, modulaciones, y el uso de conceptos armónicos clave." },
+        keyConcepts: { 
+            type: Type.ARRAY, 
+            description: "Una lista de 4-5 conceptos armónicos fundamentales para entender la pieza.",
+            items: { type: Type.STRING }
         }
-    }
+    },
+    required: ["pieceTitle", "composer", "analysis", "keyConcepts"]
 };
 
 export const getRepertoireAnalysis = async (piece: string): Promise<RepertoireAnalysisResult> => {
+     const prompt = `
+    Eres un catedrático de análisis musical del Real Conservatorio Superior de Música.
+    Tu tarea es realizar un análisis armónico profundo de la siguiente obra musical.
+    La respuesta DEBE estar en español.
+
+    Obra a analizar: "${piece}"
+
+    Instrucciones:
+    1.  Identifica correctamente el título completo de la obra y su compositor.
+    2.  Proporciona un análisis armónico detallado, como para una clase de nivel superior. Cubre la tonalidad principal, la forma, las modulaciones más importantes y el uso de dispositivos armónicos específicos (ej. acordes napolitanos, sextas aumentadas, cromatismo, etc.). Formatea este análisis en Markdown.
+    3.  Extrae una lista de los conceptos armónicos clave que un estudiante debería entender para apreciar la pieza.
+    `;
+    
     try {
-        const prompt = `
-            Eres un catedrático de análisis musical del conservatorio más prestigioso del mundo.
-            Tu tarea es analizar la siguiente pieza musical para un estudiante avanzado.
-
-            Pieza a analizar: "${piece}"
-
-            Instrucciones:
-            1.  Identifica el compositor y el título completo de la obra.
-            2.  Realiza un análisis armónico profundo. Divídelo por secciones si es aplicable (Exposición, Desarrollo, etc., o A, B, A').
-            3.  Describe la estructura formal, las modulaciones, el uso de cadencias, y las técnicas armónicas notables (cromatismo, intercambio modal, etc.).
-            4.  Usa un lenguaje académico pero pedagógico.
-            5.  Identifica los conceptos armónicos clave que un estudiante debería aprender de esta pieza.
-            
-            Devuelve la respuesta exclusivamente en el formato JSON especificado.
-        `;
-
         const response = await ai.models.generateContent({
-            model,
+            model: "gemini-2.5-flash",
             contents: prompt,
             config: {
-                responseMimeType: 'application/json',
+                responseMimeType: "application/json",
                 responseSchema: repertoireSchema,
-                temperature: 0.7
-            }
+            },
         });
-
-        const parsedResponse = JSON.parse(response.text);
-        return parsedResponse as RepertoireAnalysisResult;
-
+        const jsonText = response.text.trim();
+        return JSON.parse(jsonText);
     } catch (error) {
-        console.error("Error generating repertoire analysis:", error);
-        throw new Error("Failed to get repertoire analysis from Gemini API.");
+        console.error("Error calling Gemini API for repertoire analysis:", error);
+        throw new Error("No se pudo obtener el análisis. Inténtelo de nuevo.");
     }
-};
+}

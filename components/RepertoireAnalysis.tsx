@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Card } from './Card';
 import { Spinner } from './Spinner';
@@ -6,12 +5,10 @@ import { getRepertoireAnalysis } from '../services/geminiService';
 import { RepertoireAnalysisResult } from '../types';
 import { marked } from 'marked';
 
-
 const SUGGESTED_PIECES = [
     "Preludio en Mi menor, Op. 28 n.º 4 de Chopin",
     "Claro de Luna (1er mov.) de Beethoven",
-    "Gymnopédie n.º 1 de Satie",
-    "El Cisne de Saint-Saëns",
+    "Preludio a la siesta de un fauno de Debussy",
 ];
 
 export const RepertoireAnalysis: React.FC = () => {
@@ -27,61 +24,69 @@ export const RepertoireAnalysis: React.FC = () => {
         setResult(null);
         try {
             const analysisResult = await getRepertoireAnalysis(selectedPiece);
+            // Parse the analysis content from Markdown to HTML
             const parsedAnalysis = await marked.parse(analysisResult.analysis);
             setResult({ ...analysisResult, analysis: parsedAnalysis });
         } catch (err) {
-            setError('Ha ocurrido un error al obtener el análisis. Por favor, inténtelo de nuevo.');
+            setError(err instanceof Error ? err.message : 'Ha ocurrido un error desconocido.');
             console.error(err);
         } finally {
             setIsLoading(false);
         }
     }, []);
     
-    const handleFormSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        handleFetchAnalysis(piece);
+    // Single entry point for fetching data to ensure consistency
+    const startFetch = (fetchPiece: string) => {
+        if (!fetchPiece || isLoading) return;
+        setPiece(fetchPiece); // Update the input field
+        handleFetchAnalysis(fetchPiece); // Start the API call
     };
 
-    const handleSuggestionClick = (selectedPiece: string) => {
-        setPiece(selectedPiece);
-        handleFetchAnalysis(selectedPiece);
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        startFetch(piece);
     };
 
     return (
         <div className="space-y-8">
             <Card title="Analizador de Repertorio Musical">
-                <p className="text-gray-600 dark:text-gray-300 mb-4">
-                    Introduce el nombre de una obra musical (ej: "Sonata para piano n.º 14 de Beethoven") para recibir un análisis armónico detallado.
-                </p>
-                <form onSubmit={handleFormSubmit} className="flex flex-col sm:flex-row gap-4 mb-6">
-                    <input
-                        type="text"
-                        value={piece}
-                        onChange={(e) => setPiece(e.target.value)}
-                        placeholder="Introduce una pieza o compositor..."
-                        className="flex-grow p-3 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
-                        aria-label="Nombre de la pieza musical"
-                    />
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label htmlFor="repertoire-piece" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Obra Musical
+                        </label>
+                        <input
+                            id="repertoire-piece"
+                            type="text"
+                            value={piece}
+                            onChange={(e) => setPiece(e.target.value)}
+                            placeholder="Ej: Sonata Patética de Beethoven, 1er mov."
+                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700"
+                            disabled={isLoading}
+                        />
+                    </div>
+                     <div className="flex flex-wrap gap-2">
+                        <span className="text-sm text-gray-500 dark:text-gray-400 self-center">Sugerencias:</span>
+                        {SUGGESTED_PIECES.map(item => (
+                            <button
+                            type="button"
+                            key={item}
+                            onClick={() => startFetch(item)}
+                            disabled={isLoading}
+                            className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-600 transition-colors text-sm disabled:opacity-50"
+                            >
+                            {item}
+                            </button>
+                        ))}
+                    </div>
                     <button
                         type="submit"
                         disabled={isLoading || !piece}
-                        className="px-6 py-3 bg-indigo-600 text-white font-bold rounded-lg shadow-md hover:bg-indigo-700 disabled:bg-indigo-400 disabled:cursor-not-allowed transition-all duration-300"
+                        className="w-full bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 disabled:bg-indigo-400 transition-colors"
                     >
                         {isLoading ? 'Analizando...' : 'Analizar Obra'}
                     </button>
                 </form>
-                 <div className="flex flex-wrap gap-3">
-                    <span className="text-sm font-semibold text-gray-600 dark:text-gray-300 self-center">Sugerencias:</span>
-                    {SUGGESTED_PIECES.map(item => (
-                        <button
-                        key={item}
-                        onClick={() => handleSuggestionClick(item)}
-                        className="px-3 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-full hover:bg-indigo-200 dark:hover:bg-indigo-600 transition-colors text-sm"
-                        >
-                        {item}
-                        </button>
-                    ))}
-                </div>
             </Card>
 
             {isLoading && <div className="flex justify-center p-10"><Spinner /></div>}

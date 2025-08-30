@@ -1,4 +1,5 @@
 
+
 export enum Topic {
   PROGRESSIONS = 'Generador de Progresiones',
   THEORY_GUIDE = 'Guía Teórica Avanzada',
@@ -15,7 +16,21 @@ export interface Chord {
   function: string;
 }
 
+export interface GenerationParams {
+  key: string;
+  mode: string;
+  style: string;
+  complexity: string;
+  meter: string;
+  tempo: number;
+  numChords?: number;
+  sourceProgression?: string;
+}
+
+
 export interface GeneratedAnalysis {
+  id?: string;
+  params: GenerationParams;
   progression: Chord[];
   analysis: string;
   concepts: string[];
