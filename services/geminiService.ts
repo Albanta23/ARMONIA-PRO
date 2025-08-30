@@ -1,18 +1,17 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { GeneratedAnalysis, GenerationParams, RepertoireAnalysisResult } from '../types';
 
-// FIX: As per coding guidelines, the API key must be retrieved from process.env.API_KEY.
-// This change addresses a TypeScript error related to import.meta.env and aligns with the project's API key management strategy.
-const apiKey = process.env.API_KEY;
-
-if (!apiKey) {
+// FIX: Aligned API key handling with @google/genai SDK guidelines.
+// The API key is now sourced exclusively from process.env.API_KEY and must be set
+// in the deployment environment (e.g., Coolify).
+if (!process.env.API_KEY) {
   // Provide a more user-friendly error in the browser console.
-  console.error("API_KEY is not set. Please set it in your environment variables.");
-  // Throwing an error here is still good practice.
+  console.error("API_KEY is not set. Please set it in your deployment environment variables (e.g., in Coolify).");
+  // Throwing an error here prevents the app from making failed API calls.
   throw new Error("API key configuration error. Check the console for details.");
 }
 
-const ai = new GoogleGenAI({ apiKey });
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const progressionSchema = {
   type: Type.OBJECT,
@@ -83,7 +82,7 @@ export const generateProgressionAnalysis = async (params: GenerationParams): Pro
 
     Instrucciones:
     1.  Crea una progresión de acordes que sea idiomática para el estilo y nivel de complejidad solicitados.
-    2.  Para cada acorde, proporciona su cifrado americano (ej. 'Cmaj7', 'G7(b9)') y su función armónica precisa.
+    2.  Para cada acorde, proporciona su cifrado americano (ej. 'Cmaj7', 'G7(b9)') y su función armónica precise.
     3.  Escribe un análisis profundo y académico de la progresión. Explica las decisiones armónicas, las cadencias, el uso de cromatismo, las dominantes secundarias, el intercambio modal, o cualquier otro concepto relevante. La explicación debe ser clara, concisa y de alto nivel.
     4.  Identifica los conceptos teóricos más importantes demostrados en la progresión.
     5.  Proporciona un ejemplo relevante de una pieza del repertorio (clásico, jazz, etc.) que utilice un concepto o progresión similar.
