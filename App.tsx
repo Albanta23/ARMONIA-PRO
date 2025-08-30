@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -16,6 +15,10 @@ const App: React.FC = () => {
   const handleStart = (topic: Topic) => {
     setActiveTopic(topic);
     setShowIntro(false);
+  };
+
+  const goHome = () => {
+    setShowIntro(true);
   };
 
   const renderContent = useCallback(() => {
@@ -39,7 +42,7 @@ const App: React.FC = () => {
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
       <Sidebar activeTopic={activeTopic} setActiveTopic={setActiveTopic} />
       <div className="flex flex-col flex-1 overflow-y-auto">
-        <Header />
+        <Header onGoHome={goHome} />
         <main className="p-4 sm:p-6 lg:p-8 flex-1">
           {renderContent()}
         </main>

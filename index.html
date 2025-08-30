@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -15,6 +14,25 @@
       h1, h2, h3, h4, h5, h6 {
         font-family: 'Cormorant Garamond', serif;
       }
+      /* Styles for abcjs rendered SVG */
+      .abcjs-note, .abcjs-rest {
+        fill: #111827 !important; /* dark:text-gray-900 */
+      }
+      .abcjs-staff-line, .abcjs-clef, .abcjs-time-signature, .abcjs-bar-line {
+         stroke: #111827 !important;
+      }
+      .abcjs-lyric {
+        fill: #4b5563 !important; /* dark:text-gray-600 */
+      }
+      .dark .abcjs-note, .dark .abcjs-rest {
+        fill: #f3f4f6 !important; /* dark:text-gray-100 */
+      }
+       .dark .abcjs-staff-line, .dark .abcjs-clef, .dark .abcjs-time-signature, .dark .abcjs-bar-line {
+         stroke: #f3f4f6 !important;
+      }
+      .dark .abcjs-lyric {
+        fill: #d1d5db !important; /* dark:text-gray-300 */
+      }
     </style>
   <script type="importmap">
 {
@@ -23,7 +41,8 @@
     "react": "https://aistudiocdn.com/react@^19.1.1",
     "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
-    "marked": "https://aistudiocdn.com/marked@^13.0.2"
+    "marked": "https://aistudiocdn.com/marked@^13.0.2",
+    "abcjs": "https://aistudiocdn.com/abcjs@^6.5.1"
   }
 }
 </script>

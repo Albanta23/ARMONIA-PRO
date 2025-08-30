@@ -1,9 +1,9 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { Card } from './Card';
 import { Spinner } from './Spinner';
 import { getTheoryExplanation } from '../services/geminiService';
 import { marked } from 'marked';
+import ABCJS from 'abcjs';
 
 
 const COMMON_TOPICS = [
@@ -23,6 +23,25 @@ export const TheoryGuide: React.FC = () => {
   const [explanation, setExplanation] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const explanationRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (explanation && explanationRef.current) {
+        const abcElements = explanationRef.current.querySelectorAll('.abc-notation');
+        abcElements.forEach((el, index) => {
+            const abcCode = el.textContent || '';
+            const targetId = `abc-render-${Date.now()}-${index}`;
+            el.id = targetId;
+            ABCJS.renderAbc(targetId, abcCode, { 
+                responsive: "resize",
+                paddingleft: 0,
+                paddingright: 0,
+                paddingtop: 0,
+                paddingbottom: 0,
+            });
+        });
+    }
+  }, [explanation]);
 
   const handleFetchExplanation = useCallback(async (selectedTopic: string) => {
     if (!selectedTopic) return;
@@ -31,8 +50,15 @@ export const TheoryGuide: React.FC = () => {
     setExplanation(null);
     try {
       const result = await getTheoryExplanation(selectedTopic);
-      // Since the prompt now asks for markdown, we can parse it.
-      const html = await marked.parse(result);
+      
+      // Procesar texto para reemplazar [abc]...[/abc] por divs antes de pasar a marked
+      const processedForAbc = result.replace(/\[abc\]([\s\S]*?)\[\/abc\]/g, (match, abcContent) => {
+          // Usamos un div con una clase específica y el contenido ABC dentro,
+          // que luego será procesado por useEffect.
+          return `<div class="abc-notation">${abcContent.trim()}</div>`;
+      });
+
+      const html = await marked.parse(processedForAbc);
       setExplanation(html);
     } catch (err) {
       setError('Ha ocurrido un error al obtener la explicación. Por favor, inténtelo de nuevo.');
@@ -92,7 +118,11 @@ export const TheoryGuide: React.FC = () => {
       
       {explanation && (
         <Card title={`Explicación de: ${topic}`}>
-            <div className="prose prose-lg dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: explanation }} />
+            <div 
+                ref={explanationRef}
+                className="prose prose-lg dark:prose-invert max-w-none" 
+                dangerouslySetInnerHTML={{ __html: explanation }} 
+            />
         </Card>
       )}
     </div>

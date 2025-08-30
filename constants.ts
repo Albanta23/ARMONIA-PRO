@@ -1,7 +1,8 @@
-
 import { Scale } from './types';
 
 export const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+export const METERS = ['4/4', '3/4', '6/8', '2/4', '12/8', '5/4', '7/8'];
 
 export const MODES: { [key: string]: Scale } = {
   'Mayor': { name: 'Mayor (Jónico)', intervals: [0, 2, 4, 5, 7, 9, 11] },
@@ -22,7 +23,8 @@ export const HARMONY_STYLES = [
   'Impresionismo (Modos y Acordes Extendidos)',
   'Jazz (Bebop/Cool Jazz)',
   'Jazz Modal',
-  'Fusión Contemporánea'
+  'Fusión Contemporánea',
+  'Pop/Rock (Armonía Funcional)'
 ];
 
 export const COMPLEXITY_LEVELS = [

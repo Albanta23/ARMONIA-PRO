@@ -22,6 +22,7 @@ export interface GeneratedAnalysis {
   musicalExample: {
       piece: string;
       description: string;
+      simplifiedProgression?: string;
   };
 }
 
