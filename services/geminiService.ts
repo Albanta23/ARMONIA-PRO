@@ -121,8 +121,16 @@ export const getTheoryExplanation = async (topic: string): Promise<string> => {
     1.  **Definición Concisa:** Una explicación directa del concepto.
     2.  **Contexto Histórico y Estilístico:** ¿En qué períodos o estilos es más común?
     3.  **Funcionamiento Teórico:** Detalla cómo funciona, las reglas que sigue y por qué es efectivo.
-    4.  **Ejemplos Prácticos:** Proporciona uno o más ejemplos musicales breves. **REGLA OBLIGATORIA:** Cada ejemplo musical DEBE estar encapsulado en notación ABCJS dentro de un bloque \`[abc]...[/abc]\`. NO incluyas ejemplos musicales sin este formato. Por ejemplo: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"G7" [GBdf] | "C" [CEGc] |[/abc]\`.
+    4.  **Ejemplos Prácticos:** 
+        - OBLIGATORIO: SIEMPRE debes incluir AL MENOS 2-3 ejemplos musicales.
+        - OBLIGATORIO: CADA ejemplo musical DEBE estar encapsulado en notación ABCJS dentro de un bloque \`[abc]...[/abc]\`.
+        - OBLIGATORIO: NO incluyas NINGÚN ejemplo musical sin este formato.
+        - OBLIGATORIO: Cada ejemplo debe tener acordes con cifrado americano (entre comillas).
+        - Formato requerido: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"Acorde1" [notas] | "Acorde2" [notas] | "Acorde3" [notas] | "Acorde4" [notas] |[/abc]\`
+        - Ejemplo válido: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"Am" [ACE] | "F" [FAC] | "G7" [GBDf] | "C" [CEG] |[/abc]\`
     5.  **Repertorio Clave:** Menciona una o dos piezas famosas donde este concepto sea prominente.
+    
+    IMPORTANTE: Si no incluyes ejemplos en formato [abc]...[/abc], la respuesta será considerada incompleta e incorrecta.
     `;
     
     try {
@@ -152,33 +160,79 @@ const repertoireSchema = {
     required: ["pieceTitle", "composer", "analysis", "keyConcepts"]
 };
 
-export const getRepertoireAnalysis = async (piece: string): Promise<RepertoireAnalysisResult> => {
-     const prompt = `
-    Eres un catedrático de análisis musical del Real Conservatorio Superior de Música.
-    Tu tarea es realizar un análisis armónico profundo de la siguiente obra musical.
-    La respuesta DEBE estar en español.
-
-    Obra a analizar: "${piece}"
-
-    Instrucciones:
-    1.  Identifica correctamente el título completo de la obra y su compositor.
-    2.  Proporciona un análisis armónico detallado, como para una clase de nivel superior. Cubre la tonalidad principal, la forma, las modulaciones más importantes y el uso de dispositivos armónicos específicos (ej. acordes napolitanos, sextas aumentadas, cromatismo, etc.). Formatea este análisis en Markdown.
-    3.  Extrae una lista de los conceptos armónicos clave que un estudiante debería entender para apreciar la pieza.
+export const checkExerciseAnswer = async (
+    exerciseTitle: string,
+    instructions: string,
+    level: string,
+    targetKey: string,
+    studentAnswer: string[],
+    abcNotation: string
+): Promise<{ feedback: string; score: number; isCorrect: boolean }> => {
+    const notesList = studentAnswer.join(', ');
+    
+    const prompt = `
+    Eres un catedrático de armonía del Real Conservatorio Superior de Música evaluando un ejercicio de un estudiante.
+    
+    **DATOS DEL EJERCICIO:**
+    - Título: "${exerciseTitle}"
+    - Instrucciones: "${instructions}"
+    - Nivel: ${level}
+    - Tonalidad objetivo: ${targetKey}
+    
+    **RESPUESTA DEL ESTUDIANTE:**
+    - Notas colocadas: ${notesList}
+    - Notación ABC generada: ${abcNotation}
+    
+    **TAREA DE EVALUACIÓN:**
+    Analiza la respuesta del estudiante y proporciona una evaluación pedagógica completa.
+    
+    **FORMATO DE RESPUESTA REQUERIDO:**
+    
+    **CORRECCIÓN:** [SÍ/NO]
+    
+    **PUNTUACIÓN:** [1-10]
+    
+    **ANÁLISIS TÉCNICO:**
+    [Análisis detallado de la respuesta desde el punto de vista armónico]
+    
+    **ASPECTOS POSITIVOS:**
+    - [Lista de elementos correctos]
+    
+    **ASPECTOS A MEJORAR:**
+    - [Lista de errores o mejoras necesarias]
+    
+    **SUGERENCIAS PEDAGÓGICAS:**
+    [Consejos específicos para el estudiante basados en su nivel]
+    
+    **EJERCICIOS COMPLEMENTARIOS:**
+    [Sugerencias de práctica adicional si es necesario]
+    
+    Responde en español con un tono pedagógico constructivo y profesional.
     `;
     
     try {
         const response = await ai.models.generateContent({
             model: "gemini-2.5-flash",
             contents: prompt,
-            config: {
-                responseMimeType: "application/json",
-                responseSchema: repertoireSchema,
-            },
         });
-        const jsonText = response.text.trim();
-        return JSON.parse(jsonText);
+        
+        const feedbackText = response.text;
+        
+        // Extraer puntuación
+        const scoreMatch = feedbackText.match(/\*\*PUNTUACIÓN:\*\*\s*(\d+)/i);
+        const score = scoreMatch ? parseInt(scoreMatch[1]) : 0;
+        
+        // Determinar si es correcta
+        const correctMatch = feedbackText.match(/\*\*CORRECCIÓN:\*\*\s*(SÍ|SI|YES|NO)/i);
+        const isCorrect = correctMatch ? ['SÍ', 'SI', 'YES'].includes(correctMatch[1].toUpperCase()) : false;
+        
+        return {
+            feedback: feedbackText,
+            score,
+            isCorrect
+        };
     } catch (error) {
-        console.error("Error calling Gemini API for repertoire analysis:", error);
-        throw new Error("No se pudo obtener el análisis. Inténtelo de nuevo.");
+        console.error("Error calling Gemini API for exercise check:", error);
+        throw new Error("No se pudo verificar la respuesta. Inténtelo de nuevo.");
     }
-}
+};

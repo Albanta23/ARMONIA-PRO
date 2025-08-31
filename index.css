@@ -2,9 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Fuentes personalizadas */
 body {
   font-family: 'Lato', sans-serif;
 }
+
 h1, h2, h3, h4, h5, h6 {
   font-family: 'Cormorant Garamond', serif;
+}
+
+/* Estilos para el sistema de drag & drop de ejercicios */
+.draggable-note {
+  cursor: move;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.draggable-note:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+}
+
+.draggable-note:active {
+  transform: scale(0.95);
+}
+
+.staff-drop-zone {
+  border: 2px dashed transparent;
+  transition: all 0.3s ease;
+}
+
+.staff-drop-zone.drag-over {
+  border-color: #6366f1;
+  background-color: rgba(99, 102, 241, 0.1);
+}
+
+/* Estilos para notas colocadas en el pentagrama */
+.placed-note {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  border: 2px solid #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  z-index: 10;
+}
+
+.placed-note:hover {
+  transform: scale(1.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Animaciones para feedback */
+.feedback-success {
+  border: 2px solid #10b981;
+  background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+}
+
+.feedback-error {
+  border: 2px solid #ef4444;
+  background: linear-gradient(135deg, #fee2e2, #fecaca);
+}
+
+.feedback-warning {
+  border: 2px solid #f59e0b;
+  background: linear-gradient(135deg, #fef3c7, #fed7aa);
+}
+
+/* Estilos para el spinner del componente Spinner */
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Mejoras visuales para selectores */
+.enhanced-select {
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.5rem center;
+  background-repeat: no-repeat;
+  background-size: 1.5em 1.5em;
+  padding-right: 2.5rem;
+}
+
+/* Estilos para botones de ejercicios */
+.exercise-button {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.exercise-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
