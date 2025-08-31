@@ -160,6 +160,48 @@ const repertoireSchema = {
     required: ["pieceTitle", "composer", "analysis", "keyConcepts"]
 };
 
+export const getRepertoireAnalysis = async (pieceQuery: string): Promise<RepertoireAnalysisResult> => {
+    const prompt = `
+    Eres un catedrático de análisis musical del Real Conservatorio Superior de Música.
+    Tu tarea es realizar un análisis armónico profundo de una obra musical específica.
+    La respuesta DEBE estar en español.
+
+    Obra solicitada: "${pieceQuery}"
+
+    Instrucciones:
+    1. Identifica correctamente el título completo de la obra y su compositor.
+    2. Proporciona un análisis armónico exhaustivo en formato Markdown que incluya:
+       - Estructura general de la obra
+       - Tonalidades principales y modulaciones
+       - Progresiones armónicas características
+       - Uso de acordes especiales (séptimas, novenas, alterados, etc.)
+       - Técnicas compositivas empleadas
+       - Contexto histórico y estilístico
+    3. Lista los conceptos armónicos más importantes que se pueden estudiar en esta obra.
+    4. El análisis debe ser académico pero accesible, como una clase magistral.
+
+    IMPORTANTE: Si la obra no existe o no estás seguro de la identidad específica, indica claramente las limitaciones del análisis.
+    `;
+    
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-2.5-flash",
+            contents: prompt,
+            config: {
+              responseMimeType: "application/json",
+              responseSchema: repertoireSchema,
+            },
+        });
+
+        const jsonText = response.text.trim();
+        const result = JSON.parse(jsonText);
+        return result;
+    } catch (error) {
+        console.error("Error calling Gemini API for repertoire analysis:", error);
+        throw new Error("No se pudo obtener el análisis del repertorio. Inténtelo de nuevo.");
+    }
+};
+
 export const checkExerciseAnswer = async (
     exerciseTitle: string,
     instructions: string,

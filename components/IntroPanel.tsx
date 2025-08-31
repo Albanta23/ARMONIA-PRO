@@ -14,9 +14,9 @@ const FeatureCard: React.FC<{
 }> = ({ title, description, icon, onClick }) => (
     <div 
         onClick={onClick}
-        className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm p-6 rounded-xl shadow-lg hover:shadow-2xl hover:scale-105 transform transition-all duration-300 cursor-pointer border border-white/20"
+        className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-6 rounded-xl shadow-xl hover:shadow-2xl hover:scale-105 transform transition-all duration-300 cursor-pointer border border-white/30 hover:bg-white/95 dark:hover:bg-gray-800/95"
     >
-        <div className="flex items-center justify-center h-12 w-12 rounded-full bg-indigo-500 text-white mb-4">
+        <div className="flex items-center justify-center h-12 w-12 rounded-full bg-indigo-500 text-white mb-4 shadow-lg">
             {icon}
         </div>
         <h3 className="text-xl font-bold text-gray-800 dark:text-gray-100 mb-2">{title}</h3>
@@ -48,16 +48,28 @@ export const IntroPanel: React.FC<IntroPanelProps> = ({ onStart }) => {
     }, []);
 
     return (
-        <div className="h-screen w-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900 overflow-hidden">
+        <div className="h-screen w-screen flex items-center justify-center overflow-hidden relative">
+            {/* Imagen de fondo */}
+            <div 
+                className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                style={{ 
+                    backgroundImage: 'url(/hero-background.jpg)',
+                    filter: 'brightness(0.4)' // Oscurecer la imagen para mejor legibilidad
+                }}
+            />
+            
+            {/* Overlay con gradiente para mejor contraste */}
+            <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-transparent to-black/70" />
+            
             <div 
                 ref={containerRef}
-                className="w-[90vw] max-w-4xl p-10 bg-gray-200/50 dark:bg-gray-800/50 rounded-3xl shadow-2xl transition-transform duration-200 ease-out"
+                className="relative z-10 w-[90vw] max-w-4xl p-10 bg-white/10 dark:bg-black/20 backdrop-blur-md rounded-3xl shadow-2xl transition-transform duration-200 ease-out border border-white/20"
                 style={{ transformStyle: 'preserve-3d' }}
             >
                 <div style={{ transform: 'translateZ(40px)' }}>
                     <div className="text-center mb-10">
-                        <h1 className="text-5xl font-bold text-gray-800 dark:text-gray-100 mb-2 tracking-wide">Bienvenido a Harmonia Pro</h1>
-                        <p className="text-lg text-gray-600 dark:text-gray-300">Su asistente personal para el estudio de la armonía avanzada.</p>
+                        <h1 className="text-5xl font-bold text-white mb-2 tracking-wide drop-shadow-2xl">Bienvenido a Harmonia Pro</h1>
+                        <p className="text-lg text-gray-200 drop-shadow-lg">Su asistente personal para el estudio de la armonía avanzada.</p>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
