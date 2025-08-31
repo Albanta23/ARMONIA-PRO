@@ -7,12 +7,14 @@ import { AuthButton } from './components/AuthButton';
 import { Footer } from './components/Footer';
 import { IntroPanel } from './components/IntroPanel';
 import { Spinner } from './components/Spinner';
+import ErrorBoundary from './components/ErrorBoundary';
 import { Topic } from './types';
 
 // Lazy loading de componentes pesados
 const ProgressionGenerator = lazy(() => import('./components/ProgressionGenerator').then(module => ({ default: module.ProgressionGenerator })));
 const TheoryGuide = lazy(() => import('./components/TheoryGuide').then(module => ({ default: module.TheoryGuide })));
 const RepertoireAnalysis = lazy(() => import('./components/RepertoireAnalysis').then(module => ({ default: module.RepertoireAnalysis })));
+const InteractiveExercises = lazy(() => import('./components/InteractiveExercises').then(module => ({ default: module.InteractiveExercises })));
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth0();
@@ -140,6 +142,14 @@ const App: React.FC = () => {
           <Suspense fallback={<div className="flex justify-center items-center h-64"><Spinner /></div>}>
             <RepertoireAnalysis />
           </Suspense>
+        );
+      case Topic.INTERACTIVE_EXERCISES:
+        return (
+          <ErrorBoundary>
+            <Suspense fallback={<div className="flex justify-center items-center h-64"><Spinner /></div>}>
+              <InteractiveExercises />
+            </Suspense>
+          </ErrorBoundary>
         );
       default:
         return <IntroPanel onStart={setActiveTopic} />;

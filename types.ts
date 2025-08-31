@@ -1,10 +1,11 @@
 
 
 export enum Topic {
-  HOME = 'Página Principal',
-  PROGRESSIONS = 'Generador de Progresiones',
-  THEORY_GUIDE = 'Guía Teórica Avanzada',
-  REPERTOIRE_ANALYSIS = 'Análisis de Repertorio',
+  HOME = 'home',
+  PROGRESSIONS = 'progressions',
+  THEORY_GUIDE = 'theory_guide',
+  REPERTOIRE_ANALYSIS = 'repertoire_analysis',
+  INTERACTIVE_EXERCISES = 'interactive_exercises'
 }
 
 export interface Scale {
