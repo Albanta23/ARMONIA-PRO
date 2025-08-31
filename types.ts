@@ -1,6 +1,7 @@
 
 
 export enum Topic {
+  HOME = 'Página Principal',
   PROGRESSIONS = 'Generador de Progresiones',
   THEORY_GUIDE = 'Guía Teórica Avanzada',
   REPERTOIRE_ANALYSIS = 'Análisis de Repertorio',

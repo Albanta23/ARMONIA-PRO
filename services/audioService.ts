@@ -20,18 +20,20 @@ let reverbNode: AudioNode;
 const createReverb = (context: AudioContext): AudioNode => {
     const convolver = context.createConvolver();
     
-    // Generar una respuesta de impulso sintética (ruido blanco con decaimiento exponencial).
+    // Generar una respuesta de impulso sintética mejorada para piano de concierto.
     const sampleRate = context.sampleRate;
-    const duration = 1.5;
-    const decay = 2.5;
+    const duration = 2.2; // Mayor duración para más realismo
+    const decay = 3.5; // Decaimiento más suave
     const impulseLength = sampleRate * duration;
     const impulse = context.createBuffer(2, impulseLength, sampleRate);
     const impulseL = impulse.getChannelData(0);
     const impulseR = impulse.getChannelData(1);
 
     for (let i = 0; i < impulseLength; i++) {
-        impulseL[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseLength, decay);
-        impulseR[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / impulseLength, decay);
+        const t = i / impulseLength;
+        const envelope = Math.pow(1 - t, decay) * (1 + 0.1 * Math.sin(t * Math.PI * 8));
+        impulseL[i] = (Math.random() * 2 - 1) * envelope * (1 - 0.1 * Math.sin(t * Math.PI * 12));
+        impulseR[i] = (Math.random() * 2 - 1) * envelope * (1 + 0.1 * Math.cos(t * Math.PI * 10));
     }
 
     convolver.buffer = impulse;
@@ -43,18 +45,25 @@ const getAudioContext = (): AudioContext => {
     try {
       audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      // Crear y conectar el bus de reverberación global.
-      reverbNode = createReverb(audioContext);
-      const reverbGain = audioContext.createGain();
-      reverbGain.gain.value = 0.4; // Nivel de "humedad" de la reverberación.
-      reverbNode.connect(reverbGain);
-      reverbGain.connect(audioContext.destination);
-
-    } catch (e) {
-      console.error("Web Audio API is not supported in this browser");
-      throw e;
+      // Inicialización lazy de reverb - solo se crea cuando se necesita
+      if (!reverbNode) {
+        reverbNode = createReverb(audioContext);
+        const reverbGain = audioContext.createGain();
+        reverbGain.gain.value = 0.25; // Nivel más sutil de reverberación
+        
+        reverbNode.connect(reverbGain);
+        reverbGain.connect(audioContext.destination);
+      }
+    } catch (error) {
+      console.error('Error creating audio context:', error);
+      throw new Error('No se pudo inicializar el sistema de audio');
     }
   }
+  
+  if (audioContext.state === 'suspended') {
+    audioContext.resume().catch(err => console.warn('Could not resume audio context:', err));
+  }
+  
   return audioContext;
 };
 
@@ -158,13 +167,16 @@ const createGrandPianoNote = (context: AudioContext, midiNote: number, startTime
     const fundamentalFrequency = midiToFrequency(midiNote);
 
     const harmonics = [
-        { wave: 'sine',     mul: 1, gain: 1.0 },
-        { wave: 'triangle', mul: 2, gain: 0.6 },
-        { wave: 'sine',     mul: 3, gain: 0.3 },
-        { wave: 'sine',     mul: 4, gain: 0.25 },
-        { wave: 'triangle', mul: 5, gain: 0.1 },
-        { wave: 'sine',     mul: 6, gain: 0.08 },
-        { wave: 'sine',     mul: 8, gain: 0.04 },
+        { wave: 'sine',     mul: 1,   gain: 1.0 },
+        { wave: 'triangle', mul: 2,   gain: 0.5 },
+        { wave: 'sine',     mul: 3,   gain: 0.25 },
+        { wave: 'sine',     mul: 4,   gain: 0.2 },
+        { wave: 'triangle', mul: 5,   gain: 0.12 },
+        { wave: 'sine',     mul: 6,   gain: 0.08 },
+        { wave: 'sine',     mul: 7,   gain: 0.05 },
+        { wave: 'sine',     mul: 8,   gain: 0.03 },
+        { wave: 'sine',     mul: 10,  gain: 0.02 },
+        { wave: 'sine',     mul: 12,  gain: 0.01 },
     ];
     
     const noteADSR = context.createGain();
@@ -172,10 +184,10 @@ const createGrandPianoNote = (context: AudioContext, midiNote: number, startTime
     noteADSR.connect(reverbNode);
 
     const now = startTime;
-    const attackTime = 0.01;
-    const decayTime = duration * 0.2;
-    const sustainLevel = 0.3;
-    const releaseTime = duration * 0.79;
+    const attackTime = 0.005; // Ataque más rápido para mayor precisión
+    const decayTime = duration * 0.15;
+    const sustainLevel = 0.4; // Sustain ligeramente mayor
+    const releaseTime = duration * 0.845; // Release más largo
     const totalDuration = attackTime + decayTime + releaseTime;
     
     noteADSR.gain.setValueAtTime(0, now);
@@ -190,31 +202,50 @@ const createGrandPianoNote = (context: AudioContext, midiNote: number, startTime
 
         const detuneValue = (index === 0) ? -3 : 3;
 
-        // Ataque percusivo con onda de sierra para simular el martillo.
+        // Ataque percusivo mejorado para simular el martillo del piano.
         const attackOsc = context.createOscillator();
         const attackGain = context.createGain();
+        const attackFilter = context.createBiquadFilter();
+        
         attackOsc.type = 'sawtooth';
-        attackOsc.frequency.value = fundamentalFrequency;
+        attackOsc.frequency.value = fundamentalFrequency * 2; // Octava superior para más brillo
         attackOsc.detune.value = detuneValue;
-        attackOsc.connect(attackGain);
+        
+        attackFilter.type = 'lowpass';
+        attackFilter.frequency.value = fundamentalFrequency * 8;
+        attackFilter.Q.value = 2;
+        
+        attackOsc.connect(attackFilter);
+        attackFilter.connect(attackGain);
         attackGain.connect(panner);
-        attackGain.gain.setValueAtTime(0.3, now);
-        attackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.1);
+        
+        attackGain.gain.setValueAtTime(0.2, now);
+        attackGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+        attackFilter.frequency.exponentialRampToValueAtTime(fundamentalFrequency * 2, now + 0.05);
+        
         attackOsc.start(now);
-        attackOsc.stop(now + 0.15);
+        attackOsc.stop(now + 0.12);
 
-        // Cuerpo sostenido de la nota con la serie armónica.
+        // Cuerpo sostenido de la nota con la serie armónica mejorada.
         harmonics.forEach(harmonic => {
             const osc = context.createOscillator();
             const gainNode = context.createGain();
+            const filter = context.createBiquadFilter();
             
-            osc.connect(gainNode);
+            osc.connect(filter);
+            filter.connect(gainNode);
             gainNode.connect(panner);
 
             osc.type = harmonic.wave as OscillatorType;
             osc.frequency.value = fundamentalFrequency * harmonic.mul;
-            osc.detune.value = detuneValue;
-            gainNode.gain.value = harmonic.gain;
+            osc.detune.value = detuneValue + (Math.random() - 0.5) * 2; // Micro-desafinación natural
+            
+            // Filtro pasabajos para suavizar armónicos altos
+            filter.type = 'lowpass';
+            filter.frequency.value = Math.min(fundamentalFrequency * harmonic.mul * 1.5, 8000);
+            filter.Q.value = 0.7;
+            
+            gainNode.gain.value = harmonic.gain * (0.9 + Math.random() * 0.2); // Variación natural
 
             osc.start(now);
             osc.stop(now + totalDuration + 0.1);

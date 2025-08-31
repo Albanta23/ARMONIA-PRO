@@ -121,8 +121,16 @@ export const getTheoryExplanation = async (topic: string): Promise<string> => {
     1.  **Definición Concisa:** Una explicación directa del concepto.
     2.  **Contexto Histórico y Estilístico:** ¿En qué períodos o estilos es más común?
     3.  **Funcionamiento Teórico:** Detalla cómo funciona, las reglas que sigue y por qué es efectivo.
-    4.  **Ejemplos Prácticos:** Proporciona uno o más ejemplos musicales breves. **REGLA OBLIGATORIA:** Cada ejemplo musical DEBE estar encapsulado en notación ABCJS dentro de un bloque \`[abc]...[/abc]\`. NO incluyas ejemplos musicales sin este formato. Por ejemplo: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"G7" [GBdf] | "C" [CEGc] |[/abc]\`.
+    4.  **Ejemplos Prácticos:** 
+        - OBLIGATORIO: SIEMPRE debes incluir AL MENOS 2-3 ejemplos musicales.
+        - OBLIGATORIO: CADA ejemplo musical DEBE estar encapsulado en notación ABCJS dentro de un bloque \`[abc]...[/abc]\`.
+        - OBLIGATORIO: NO incluyas NINGÚN ejemplo musical sin este formato.
+        - OBLIGATORIO: Cada ejemplo debe tener acordes con cifrado americano (entre comillas).
+        - Formato requerido: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"Acorde1" [notas] | "Acorde2" [notas] | "Acorde3" [notas] | "Acorde4" [notas] |[/abc]\`
+        - Ejemplo válido: \`[abc]X: 1\\nK: C\\nM: 4/4\\nL: 1/1\\n"Am" [ACE] | "F" [FAC] | "G7" [GBDf] | "C" [CEG] |[/abc]\`
     5.  **Repertorio Clave:** Menciona una o dos piezas famosas donde este concepto sea prominente.
+    
+    IMPORTANTE: Si no incluyes ejemplos en formato [abc]...[/abc], la respuesta será considerada incompleta e incorrecta.
     `;
     
     try {

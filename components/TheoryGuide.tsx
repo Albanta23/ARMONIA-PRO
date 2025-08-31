@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { Card } from './Card';
 import { Spinner } from './Spinner';
 import { getTheoryExplanation } from '../services/geminiService';
@@ -12,7 +12,7 @@ const COMMON_TOPICS = [
   'Intercambio Modal y Modos Mixtos',
   'Dominantes Secundarias y Cadena de Dominantes',
   'Sustitución Tritonal',
-];
+] as const;
 
 export const TheoryGuide: React.FC = () => {
   const [topic, setTopic] = useState('');

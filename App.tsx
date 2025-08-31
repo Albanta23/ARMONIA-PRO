@@ -1,19 +1,26 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, Suspense, lazy } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
-import { ProgressionGenerator } from './components/ProgressionGenerator';
-import { TheoryGuide } from './components/TheoryGuide';
-import { RepertoireAnalysis } from './components/RepertoireAnalysis';
 import { Auth0ProviderWithConfig } from './components/Auth0ProviderWithConfig';
 import { useAuth0 } from '@auth0/auth0-react';
 import { AuthButton } from './components/AuthButton';
 import { Footer } from './components/Footer';
-// import { IntroPanel } from './components/IntroPanel';
+import { IntroPanel } from './components/IntroPanel';
+import { Spinner } from './components/Spinner';
 import { Topic } from './types';
+
+// Lazy loading de componentes pesados
+const ProgressionGenerator = lazy(() => import('./components/ProgressionGenerator').then(module => ({ default: module.ProgressionGenerator })));
+const TheoryGuide = lazy(() => import('./components/TheoryGuide').then(module => ({ default: module.TheoryGuide })));
+const RepertoireAnalysis = lazy(() => import('./components/RepertoireAnalysis').then(module => ({ default: module.RepertoireAnalysis })));
 
 function AuthGate({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, isLoading } = useAuth0();
-  if (isLoading) return <div className="flex h-screen items-center justify-center">Cargando...</div>;
+  if (isLoading) return (
+    <div className="flex h-screen items-center justify-center">
+      <Spinner />
+    </div>
+  );
   if (!isAuthenticated) {
     return (
       <div className="flex h-screen items-center justify-center flex-col gap-6 bg-gradient-to-br from-indigo-100 to-indigo-300 px-2 sm:px-0">
@@ -107,21 +114,35 @@ function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 const App: React.FC = () => {
-  const [activeTopic, setActiveTopic] = useState<Topic>(Topic.PROGRESSIONS);
+  const [activeTopic, setActiveTopic] = useState<Topic>(Topic.HOME);
   const goHome = () => {
-    setActiveTopic(Topic.PROGRESSIONS);
+    setActiveTopic(Topic.HOME);
   };
 
   const renderContent = useCallback(() => {
     switch (activeTopic) {
+      case Topic.HOME:
+        return <IntroPanel onStart={setActiveTopic} />;
       case Topic.PROGRESSIONS:
-        return <ProgressionGenerator />;
+        return (
+          <Suspense fallback={<div className="flex justify-center items-center h-64"><Spinner /></div>}>
+            <ProgressionGenerator />
+          </Suspense>
+        );
       case Topic.THEORY_GUIDE:
-        return <TheoryGuide />;
+        return (
+          <Suspense fallback={<div className="flex justify-center items-center h-64"><Spinner /></div>}>
+            <TheoryGuide />
+          </Suspense>
+        );
       case Topic.REPERTOIRE_ANALYSIS:
-        return <RepertoireAnalysis />;
+        return (
+          <Suspense fallback={<div className="flex justify-center items-center h-64"><Spinner /></div>}>
+            <RepertoireAnalysis />
+          </Suspense>
+        );
       default:
-        return <ProgressionGenerator />;
+        return <IntroPanel onStart={setActiveTopic} />;
     }
   }, [activeTopic]);
   
@@ -130,15 +151,17 @@ const App: React.FC = () => {
       <AuthGate>
         <div className="flex flex-col min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
           <div className="flex flex-1 w-full">
-            <aside className="hidden md:block md:w-64 lg:w-72 xl:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
-              <Sidebar activeTopic={activeTopic} setActiveTopic={setActiveTopic} />
-            </aside>
+            {activeTopic !== Topic.HOME && (
+              <aside className="hidden md:block md:w-64 lg:w-72 xl:w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700">
+                <Sidebar activeTopic={activeTopic} setActiveTopic={setActiveTopic} />
+              </aside>
+            )}
             <div className="flex flex-col flex-1 w-full">
-              <Header onGoHome={goHome} />
-              <main className="p-2 sm:p-4 md:p-6 lg:p-8 flex-1 w-full max-w-full mx-auto">
+              {activeTopic !== Topic.HOME && <Header onGoHome={goHome} />}
+              <main className={`${activeTopic !== Topic.HOME ? 'p-2 sm:p-4 md:p-6 lg:p-8' : ''} flex-1 w-full max-w-full mx-auto`}>
                 {renderContent()}
               </main>
-              <Footer />
+              {activeTopic !== Topic.HOME && <Footer />}
             </div>
           </div>
         </div>
