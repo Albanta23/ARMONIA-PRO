@@ -68,7 +68,7 @@ export const IntroPanel: React.FC<IntroPanelProps> = ({ onStart }) => {
             >
                 <div style={{ transform: 'translateZ(40px)' }}>
                     <div className="text-center mb-10">
-                        <h1 className="text-5xl font-bold text-white mb-2 tracking-wide drop-shadow-2xl">Bienvenido a Harmonia Pro</h1>
+                        <h1 className="text-5xl font-bold text-white mb-2 tracking-wide drop-shadow-2xl">Bienvenido a Armonia Pro</h1>
                         <p className="text-lg text-gray-200 drop-shadow-lg">Su asistente personal para el estudio de la armonía avanzada.</p>
                     </div>
 
